@@ -669,6 +669,18 @@ function updatePricingSummary() {
         return;
     }
     
+    // Validate that end time is after start time
+    if (new Date(endTime) <= new Date(startTime)) {
+        document.querySelector('.pricing-summary').innerHTML = `
+            <div style="padding: 1rem; background: #fee; border-left: 3px solid #e74c3c; border-radius: 4px;">
+                <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                <strong style="color: #e74c3c;">Invalid Time Range</strong>
+                <p style="margin-top: 0.5rem; color: #c0392b;">End date/time must be after start date/time</p>
+            </div>
+        `;
+        return;
+    }
+    
     // Calculate dynamic pricing
     fetch(`${API_URL}/pricing/calculate`, {
         method: 'POST',
@@ -833,6 +845,12 @@ function handleBookingSubmit(e) {
     const startTime = document.getElementById('start-time').value;
     const endTime = document.getElementById('end-time').value;
     const bookingType = document.getElementById('booking-type').value;
+    
+    // Validate that end time is after start time
+    if (new Date(endTime) <= new Date(startTime)) {
+        alert('Error: End date/time must be after start date/time');
+        return;
+    }
     
     // Get the calculated total price from the pricing summary
     const totalPriceText = document.getElementById('total-price').textContent;

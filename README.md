@@ -1,4 +1,470 @@
 # Co-Working Space Booking Platform
+
+## System Design Overview
+
+### Architecture Pattern
+**3-Tier Architecture**
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Presentation Layer                      │
+│  ┌──────────────────────┐  ┌──────────────────────────┐ │
+│  │   User Frontend      │  │   Admin Frontend         │ │
+│  │  (HTML/CSS/JS)       │  │   (HTML/CSS/JS)          │ │
+│  │  Port: 8080          │  │   Port: 8081             │ │
+│  └──────────────────────┘  └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+                          ↓ HTTP/REST
+┌─────────────────────────────────────────────────────────┐
+│                   Business Logic Layer                   │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │         Node.js + Express.js Backend                │ │
+│  │              Port: 3001                             │ │
+│  │  ┌──────────────┐  ┌──────────────────────────┐   │ │
+│  │  │   Routes     │  │   Business Logic         │   │ │
+│  │  │              │  │                          │   │ │
+│  │  │ • Hubs       │  │ • Dynamic Pricing        │   │ │
+│  │  │ • Workspaces │  │ • Availability Check     │   │ │
+│  │  │ • Bookings   │  │ • QR Generation          │   │ │
+│  │  │ • Resources  │  │ • Resource Management    │   │ │
+│  │  │ • Pricing    │  │ • Validation             │   │ │
+│  │  │ • Ratings    │  │                          │   │ │
+│  │  │ • QR Codes   │  │                          │   │ │
+│  │  └──────────────┘  └──────────────────────────┘   │ │
+│  └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+                          ↓ Supabase Client
+┌─────────────────────────────────────────────────────────┐
+│                    Data Access Layer                     │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │         Supabase (PostgreSQL 15)                    │ │
+│  │                                                     │ │
+│  │  ┌──────────────────────────────────────────────┐ │ │
+│  │  │  9 Tables:                                   │ │ │
+│  │  │  • working_hubs      • pricing_rules        │ │ │
+│  │  │  • workspaces        • qr_codes             │ │ │
+│  │  │  • resources         • time_slots           │ │ │
+│  │  │  • bookings          • ratings              │ │ │
+│  │  │  • booking_resources                        │ │ │
+│  │  └──────────────────────────────────────────────┘ │ │
+│  │                                                     │ │
+│  │  Features: Auto-generated REST API, Row-Level      │ │
+│  │  Security, Real-time subscriptions, Backups        │ │
+│  └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## System Components
+
+### 1. Frontend Applications
+
+#### User Frontend (Port 8080)
+**Technology**: Vanilla JavaScript, HTML5, CSS3 (No frameworks)
+
+**Key Features**:
+- Hub-first navigation (browse hubs → select hub → view workspaces)
+- Advanced filtering (type, capacity, availability, city)
+- Real-time dynamic pricing display
+- Resource selection with quantity
+- Booking management (view, cancel)
+- QR code display for check-in
+- Responsive design with professional color scheme
+
+**State Management**:
+```javascript
+// Global state variables
+currentHub          // Selected working hub
+allHubs             // All available hubs
+allWorkspaces       // Workspaces for current hub
+currentWorkspace    // Workspace being booked
+selectedResources   // Array of {id, price, quantity, name}
+selectedPaymentMethod // Payment method selection
+currentBookingData  // Booking being processed
+```
+
+**Page Flow**:
+```
+Home → Find Spaces → Hub Selection → Workspace Browse → 
+Book Modal → Payment Modal → Success → My Bookings
+```
+
+#### Admin Frontend (Port 8081)
+**Technology**: Vanilla JavaScript, HTML5, CSS3
+
+**Key Features**:
+- Dashboard with statistics
+- CRUD operations for hubs, workspaces, resources
+- Booking management and monitoring
+- Pricing rule configuration
+- QR code tracking
+
+---
+
+### 2. Backend API (Port 3001)
+
+#### Technology Stack
+- **Runtime**: Node.js
+- **Framework**: Express.js 4.18.2
+- **Database Client**: @supabase/supabase-js 2.39.0
+- **QR Generation**: qrcode library
+- **Environment**: dotenv for configuration
+- **CORS**: Enabled for cross-origin requests
+
+#### API Design Pattern
+**RESTful API** with consistent response format:
+```json
+{
+  "success": true | false,
+  "data": { ... },
+  "error": "error message" // only if success = false
+}
+```
+
+#### Route Structure
+```
+/api
+├── /hubs                   # Hub management
+├── /workspaces             # Workspace CRUD & search
+├── /resources              # Resource management
+├── /bookings               # Booking lifecycle
+├── /pricing                # Dynamic pricing engine
+│   └── /calculate          # Price calculation endpoint
+├── /ratings                # User reviews
+└── /qr                     # QR code generation
+    ├── /generate/:id
+    └── /booking/:id
+```
+
+#### Business Logic Modules
+
+**1. Dynamic Pricing Engine** (`backend/utils/pricing.js`)
+```javascript
+calculateDynamicPrice(workspace_id, base_price, start_time, end_time, booking_type)
+```
+**Logic**:
+- Base price calculation (hourly/daily/monthly)
+- Workday premium (+8%): Monday-Friday bookings
+- Occupancy surcharge (+15%): When >70% of hub workspaces booked
+- Rating premium (+5%): Workspaces with avg rating ≥4.0
+- Custom pricing rules from database
+
+**Occupancy Calculation**:
+```
+1. Get total available workspaces in hub
+2. Count unique workspaces with overlapping bookings
+3. Occupancy Rate = (booked_workspaces / total_workspaces) × 100
+4. If > 70%, apply +15% surcharge
+```
+
+**2. Availability Checker**
+- Checks for overlapping bookings in same workspace
+- Validates time range (end > start)
+- Returns boolean availability status
+
+**3. QR Code Generator**
+- Generates unique QR code per booking
+- Base64 encoded image stored in database
+- Contains booking ID for validation
+
+---
+
+### 3. Database Layer (Supabase PostgreSQL)
+
+#### Database Design Principles
+- **Normalization**: 3NF (Third Normal Form)
+- **Referential Integrity**: Foreign keys with CASCADE DELETE
+- **Data Validation**: CHECK constraints for business rules
+- **Indexing**: Strategic indexes for query optimization
+- **Audit Trail**: created_at, updated_at timestamps
+
+#### Entity Relationship Model
+```
+working_hubs (1) ─┬─ (M) workspaces ─┬─ (M) resources
+                  │                  ├─ (M) bookings ─┬─ (1) qr_codes
+                  │                  │                └─ (M) booking_resources ─ (M) resources
+                  │                  ├─ (M) pricing_rules
+                  │                  ├─ (M) time_slots
+                  │                  └─ (M) ratings
+```
+
+**Cardinalities**:
+- 1 Hub → Many Workspaces (1:M)
+- 1 Workspace → Many Bookings (1:M)
+- 1 Workspace → Many Resources (1:M)
+- 1 Booking → 1 QR Code (1:1)
+- Bookings ↔ Resources (M:M via booking_resources)
+
+#### Key Tables
+
+**working_hubs**: Hub locations
+- Stores: name, city, address, amenities, contact info
+- Index on: city (for location filtering)
+
+**workspaces**: Bookable spaces
+- Stores: type, capacity, base_price, is_available
+- Foreign Key: hub_id → working_hubs
+- Index on: hub_id, type, is_available
+
+**bookings**: Reservation records
+- Stores: workspace_id, user_name, start/end_time, status, total_price
+- Status values: confirmed, checked_in, completed, cancelled
+- Constraint: end_time > start_time
+- Indexes: workspace_id, status, (workspace_id, start_time, end_time)
+
+**ratings**: User reviews
+- Stores: workspace_id, user_name, rating (1-5), review
+- Used for dynamic pricing (+5% if avg ≥4.0)
+
+---
+
+## Data Flow Diagrams
+
+### 1. Booking Creation Flow
+```
+User Frontend
+    │
+    ├─ User selects hub
+    ├─ Filters workspaces
+    ├─ Selects workspace & dates
+    │
+    ▼
+POST /api/pricing/calculate
+    │
+    ├─ Calculate base price (hourly/daily/monthly)
+    ├─ Check workday (Mon-Fri) → +8%
+    ├─ Check hub occupancy → +15% if >70%
+    ├─ Check workspace rating → +5% if ≥4.0
+    │
+    ▼
+Response: final_price, breakdown, modifiers
+    │
+    ▼
+User Frontend
+    │
+    ├─ Display pricing breakdown
+    ├─ User selects resources (quantity)
+    ├─ Calculate resource cost (price × qty × hours)
+    ├─ User confirms booking
+    │
+    ▼
+POST /api/bookings
+    │
+    ├─ Validate: end_time > start_time
+    ├─ Insert booking record (status: confirmed)
+    ├─ Insert booking_resources records
+    │
+    ▼
+POST /api/qr/generate/:booking_id
+    │
+    ├─ Generate QR code (Base64 image)
+    ├─ Store in qr_codes table
+    │
+    ▼
+Response: booking details + QR code
+    │
+    ▼
+User Frontend
+    │
+    └─ Display success modal with QR code
+```
+
+### 2. Dynamic Pricing Flow
+```
+Frontend: User enters dates
+    │
+    ▼
+Backend: Calculate base price
+    │
+    ├─ hourly: base_price × hours
+    ├─ daily: base_price × 8
+    └─ monthly: base_price × 8 × 22
+    │
+    ▼
+Apply Workday Modifier
+    │
+    ├─ Check if Mon-Fri
+    └─ Add 8% if true
+    │
+    ▼
+Apply Occupancy Modifier
+    │
+    ├─ Query: Count booked workspaces in hub
+    ├─ Calculate: (booked / total) × 100
+    └─ Add 15% if > 70%
+    │
+    ▼
+Apply Rating Modifier
+    │
+    ├─ Query: Get average rating
+    └─ Add 5% if ≥ 4.0
+    │
+    ▼
+Return: {final_price, breakdown, hours, occupancy_rate}
+```
+
+### 3. Workspace Availability Check
+```
+User selects workspace + dates
+    │
+    ▼
+Query bookings table
+    │
+    ├─ WHERE workspace_id = X
+    ├─ AND status IN ('confirmed', 'checked_in')
+    ├─ AND start_time < requested_end_time
+    └─ AND end_time > requested_start_time
+    │
+    ▼
+If overlapping bookings found
+    │
+    ├─ Show "Currently Booked" badge (if now between start-end)
+    └─ Show "Booked Soon" badge (if future booking)
+    │
+    ▼
+Disable "Book Now" button
+```
+
+---
+
+## Security & Validation
+
+### Input Validation
+**Frontend**:
+- Date/time validation (end > start)
+- Required field checks
+- Email format validation
+- Quantity limits (> 0)
+
+**Backend**:
+- Schema validation for all requests
+- SQL injection prevention (Supabase parameterized queries)
+- Type checking (integers, decimals, timestamps)
+- Business rule validation
+
+### Database Constraints
+```sql
+-- Booking time validation
+CONSTRAINT valid_time_range CHECK (end_time > start_time)
+
+-- Rating range
+CONSTRAINT valid_rating CHECK (rating >= 1 AND rating <= 5)
+
+-- Status validation
+CONSTRAINT valid_status CHECK (status IN ('confirmed', 'checked_in', 'completed', 'cancelled'))
+```
+
+### API Security
+- **Environment Variables**: Supabase credentials in .env (not committed)
+- **CORS**: Configured for specific origins
+- **Row Level Security**: Supabase RLS policies (can be enabled)
+- **Rate Limiting**: Can be added via express-rate-limit
+
+---
+
+## Performance Optimization
+
+### Database Optimization
+**Indexes**:
+```sql
+-- Foreign keys (automatic)
+CREATE INDEX idx_workspaces_hub_id ON workspaces(hub_id);
+CREATE INDEX idx_bookings_workspace_id ON bookings(workspace_id);
+
+-- Filter fields
+CREATE INDEX idx_workspaces_type ON workspaces(type);
+CREATE INDEX idx_workspaces_available ON workspaces(is_available);
+
+-- Composite for overlap checks
+CREATE INDEX idx_bookings_workspace_time 
+ON bookings(workspace_id, start_time, end_time);
+```
+
+**Query Optimization**:
+- SELECT only needed columns (not SELECT *)
+- Use JOINs instead of multiple queries
+- Limit result sets appropriately
+- Use connection pooling (Supabase PgBouncer)
+
+### Frontend Optimization
+- Minimal framework overhead (vanilla JS)
+- Lazy loading of workspaces (load per hub)
+- Debounced search/filter functions
+- Cached hub/workspace data in memory
+
+### Backend Optimization
+- Async/await for non-blocking I/O
+- Single database connection pool
+- Efficient pricing calculation (minimal queries)
+- Response compression (can be added)
+
+---
+
+## Scalability Considerations
+
+### Horizontal Scaling
+- **Stateless API**: No session data in backend
+- **Database Pooling**: Connection reuse
+- **Load Balancer Ready**: Multiple backend instances possible
+
+### Vertical Scaling
+- **Database**: Supabase auto-scales on paid plans
+- **Backend**: Increase Node.js memory/CPU
+- **Caching**: Redis can be added for frequently accessed data
+
+### Future Enhancements
+- **Caching Layer**: Redis for workspace listings
+- **CDN**: Static assets delivery
+- **Microservices**: Separate pricing, QR, booking services
+- **Message Queue**: Async booking confirmations (RabbitMQ/SQS)
+- **Real-time Updates**: WebSocket for live availability
+
+---
+
+## Deployment Architecture
+
+### Development Environment
+```
+Local Machine
+├── Backend: http://localhost:3001
+├── User Frontend: http://localhost:8080
+└── Admin Frontend: http://localhost:8081
+
+Database: Supabase Cloud (https://chjyfnvwvpbhtlydtcgf.supabase.co)
+```
+
+### Production Deployment (Recommended)
+```
+┌─────────────────────────────────────────┐
+│         Cloud Provider (AWS/Azure)       │
+│                                         │
+│  ┌───────────────────────────────────┐ │
+│  │  Load Balancer (ALB/nginx)        │ │
+│  └──────────┬────────────────────────┘ │
+│             │                           │
+│  ┌──────────▼──────────┐               │
+│  │  Backend Instances  │               │
+│  │  (EC2/App Service)  │               │
+│  │  Port: 3001         │               │
+│  └──────────┬──────────┘               │
+│             │                           │
+│  ┌──────────▼──────────┐               │
+│  │  Static Hosting     │               │
+│  │  (S3/Blob Storage)  │               │
+│  │  - User Frontend    │               │
+│  │  - Admin Frontend   │               │
+│  └─────────────────────┘               │
+└─────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────┐
+│       Supabase (Database)               │
+│       PostgreSQL + Auto-API             │
+└─────────────────────────────────────────┘
+```
+
+---
+
 ## Project Overview
 
 The Co-Working Space Booking Platform is a dynamic, real-time system that allows users to discover, book, and manage workspaces across multiple co-working hubs. The platform supports workspace filtering, resource booking, time-slot management, dynamic pricing, and QR-based check-in, all without requiring user login.

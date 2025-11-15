@@ -35,27 +35,35 @@ async function calculateDynamicPrice(workspace_id, base_price, start_time, end_t
       calculatedPrice += workdayIncrease;
     }
 
-    // 2. OCCUPANCY-BASED PRICING (>70% occupancy +15%)
+    // 2. OCCUPANCY-BASED PRICING (>70% of total workspaces booked +15%)
+    // Get the hub_id for this workspace
     const { data: workspace } = await supabase
       .from('workspaces')
-      .select('capacity')
+      .select('hub_id, capacity')
       .eq('id', workspace_id)
       .single();
 
-    // Get all bookings for this workspace on the same date
-    const startDate = start.toISOString().split('T')[0];
-    const { data: existingBookings } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('workspace_id', workspace_id)
-      .in('status', ['confirmed', 'checked_in'])
-      .gte('start_time', `${startDate}T00:00:00`)
-      .lte('start_time', `${startDate}T23:59:59`);
+    // Get all workspaces in the same hub
+    const { data: allWorkspaces } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('hub_id', workspace.hub_id)
+      .eq('is_available', true);
 
-    // Calculate occupancy rate (assuming 10 available slots per day)
-    const maxSlotsPerDay = 10;
-    const currentBookings = existingBookings?.length || 0;
-    const occupancyRate = (currentBookings / maxSlotsPerDay) * 100;
+    const totalWorkspaces = allWorkspaces?.length || 1;
+
+    // Get all bookings that overlap with the requested time period for workspaces in this hub
+    const { data: overlappingBookings } = await supabase
+      .from('bookings')
+      .select('workspace_id, workspaces!inner(hub_id)')
+      .eq('workspaces.hub_id', workspace.hub_id)
+      .in('status', ['confirmed', 'checked_in'])
+      .lte('start_time', end_time)
+      .gte('end_time', start_time);
+
+    // Count unique workspaces that have bookings during this time period
+    const bookedWorkspaces = new Set(overlappingBookings?.map(b => b.workspace_id) || []).size;
+    const occupancyRate = (bookedWorkspaces / totalWorkspaces) * 100;
 
     if (occupancyRate > 70) {
       const occupancyIncrease = calculatedPrice * 0.15; // 15% increase
@@ -111,12 +119,25 @@ async function calculateDynamicPrice(workspace_id, base_price, start_time, end_t
 
     priceModifiers.total = Math.round(calculatedPrice * 100) / 100;
 
+    console.log('Dynamic Pricing Calculation:', {
+      workspace_id,
+      totalWorkspaces,
+      bookedWorkspaces,
+      occupancyRate: Math.round(occupancyRate * 100) / 100,
+      durationHours,
+      isWorkday,
+      modifiers: priceModifiers
+    });
+
     return {
       finalPrice: priceModifiers.total,
       breakdown: priceModifiers,
       occupancyRate: Math.round(occupancyRate * 100) / 100,
       isWorkday,
-      average_rating: priceModifiers.average_rating || null
+      average_rating: priceModifiers.average_rating || null,
+      hours: durationHours,
+      totalWorkspaces,
+      bookedWorkspaces
     };
   } catch (error) {
     console.error('Error calculating dynamic price:', error);

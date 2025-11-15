@@ -80,6 +80,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+
 // Update pricing rule (Admin)
 router.put('/:id', async (req, res) => {
   try {
@@ -161,6 +162,10 @@ router.post('/calculate', async (req, res) => {
         breakdown: pricingResult.breakdown,
         occupancy_rate: pricingResult.occupancyRate,
         is_workday: pricingResult.isWorkday,
+        average_rating: pricingResult.average_rating,
+        hours: pricingResult.hours,
+        total_workspaces: pricingResult.totalWorkspaces,
+        booked_workspaces: pricingResult.bookedWorkspaces,
         booking_type
       }
     });

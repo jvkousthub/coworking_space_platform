@@ -718,11 +718,14 @@ function updatePricingSummary() {
             }
             
             if (pricing.breakdown.occupancy > 0) {
+                const bookedInfo = pricing.booked_workspaces && pricing.total_workspaces 
+                    ? `${pricing.booked_workspaces}/${pricing.total_workspaces} workspaces booked` 
+                    : `${pricing.occupancy_rate}% of slots already booked`;
                 modifiers.push({
                     icon: 'fa-chart-line',
                     color: '#e74c3c',
                     label: 'High Demand',
-                    reason: `${pricing.occupancy_rate}% of slots already booked`,
+                    reason: bookedInfo,
                     percentage: '+15%',
                     amount: pricing.breakdown.occupancy.toFixed(2)
                 });

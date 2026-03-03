@@ -1,6 +1,7 @@
 // home.js – Landing page logic
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return; // redirect to auth.html if not logged in
     await loadCities();
 });
 

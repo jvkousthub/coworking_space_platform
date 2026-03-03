@@ -85,6 +85,120 @@ function clearSession(key) {
     sessionStorage.removeItem(key);
 }
 
+// ── Authentication Helpers ──────────────────────
+
+/** Save JWT token to localStorage (persists across browser sessions) */
+function saveToken(token) {
+    localStorage.setItem('authToken', token);
+}
+
+/** Retrieve stored JWT token */
+function getToken() {
+    return localStorage.getItem('authToken');
+}
+
+/** Clear stored token */
+function clearToken() {
+    localStorage.removeItem('authToken');
+}
+
+/** Get the currently logged-in user object from sessionStorage.
+ *  Falls back to localStorage if session was lost (e.g., new tab). */
+function getCurrentUser() {
+    return getSession('currentUser') || JSON.parse(localStorage.getItem('currentUser') || 'null');
+}
+
+/**
+ * Auth guard – call at the top of every protected page's DOMContentLoaded.
+ * Shows a loading overlay while verifying, then either reveals the page
+ * or redirects to auth.html if the user is not authenticated.
+ * Returns the user object on success (or null on redirect).
+ */
+function requireAuth() {
+    const user  = getCurrentUser();
+    const token = getToken();
+    if (!user || !token) {
+        window.location.href = 'auth.html';
+        return null;
+    }
+    // Refresh sessionStorage in case we're in a new tab
+    if (!getSession('currentUser')) {
+        saveSession('currentUser', user);
+    }
+    // Hide loading overlay if present, reveal page content
+    const overlay = document.getElementById('auth-loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+    // Auto-populate navbar user info
+    initNavUser(user);
+    return user;
+}
+
+/**
+ * Populates the navbar user avatar, name, and dropdown info.
+ * Called automatically by requireAuth() – no need to call it manually.
+ */
+function initNavUser(user) {
+    user = user || getCurrentUser();
+    if (!user) return;
+
+    const name     = user.name  || user.email || 'User';
+    const email    = user.email || '';
+    const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+    const nameEl    = document.getElementById('user-name');
+    const avatarEl  = document.getElementById('user-avatar');
+    const ddName    = document.getElementById('user-dropdown-name');
+    const ddEmail   = document.getElementById('user-dropdown-email');
+    const ddAvatar  = document.getElementById('user-dropdown-avatar');
+
+    if (nameEl)   nameEl.textContent   = name;
+    if (avatarEl) avatarEl.textContent = initials;
+    if (ddName)   ddName.textContent   = name;
+    if (ddEmail)  ddEmail.textContent  = email;
+    if (ddAvatar) ddAvatar.textContent = initials;
+}
+
+/**
+ * Toggle the user dropdown open/closed.
+ * Wired to onclick="toggleUserMenu()" in every navbar.
+ */
+function toggleUserMenu() {
+    const dd = document.getElementById('user-dropdown');
+    if (!dd) return;
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-user')) {
+        const dd = document.getElementById('user-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+/**
+ * Returns fetch headers including the Authorization Bearer token.
+ * Always includes Content-Type: application/json.
+ */
+function getAuthHeaders() {
+    const token = getToken();
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+}
+
+/** Log the current user out and redirect to auth page. */
+function logout() {
+    clearToken();
+    clearSession('currentUser');
+    clearSession('pendingBooking');
+    clearSession('confirmedBooking');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('transactions');
+    window.location.href = 'auth.html';
+}
+
 // ── URL Params ──────────────────────────────────
 
 function getParam(name) {

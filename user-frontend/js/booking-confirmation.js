@@ -1,6 +1,7 @@
 // booking-confirmation.js – Booking success page
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth()) return;
     const data = getSession('confirmedBooking');
     if (!data) { window.location.href = 'my-bookings.html'; return; }
 

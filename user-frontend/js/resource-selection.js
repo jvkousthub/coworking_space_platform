@@ -5,6 +5,7 @@ let selectedQtys = {};
 let bookingMeta  = null; // { workspace_id, start_time, end_time }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     // Pull booking meta from sessionStorage (set by booking-form.js or workspace-details)
     bookingMeta = getSession('pendingBooking') || getSession('resourceMeta');
     if (!bookingMeta) { window.location.href = 'search-hubs.html'; return; }

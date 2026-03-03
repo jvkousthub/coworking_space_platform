@@ -18,6 +18,7 @@ const qrRouter = require('./routes/qr');
 const ratingsRouter = require('./routes/ratings');
 const usersRouter = require('./routes/users');
 const transactionsRouter = require('./routes/transactions');
+const authRouter = require('./routes/auth');
 
 // Routes
 app.use('/api/hubs', hubsRouter);
@@ -29,6 +30,7 @@ app.use('/api/qr', qrRouter);
 app.use('/api/ratings', ratingsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/transactions', transactionsRouter);
+app.use('/api/auth', authRouter);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -4,6 +4,7 @@ let bookingData  = null;
 let activeMethod = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth()) return;
     bookingData = getSession('pendingBooking');
     if (!bookingData) { window.location.href = 'search-hubs.html'; return; }
 
@@ -72,19 +73,22 @@ async function processPayment(method) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…'; }
 
     try {
-        // 1. Create booking
+        // 1. Create booking (auth token provides user identity — no need to send user fields)
         const bookRes = await fetch(`${API_URL}/bookings`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 workspace_id: bookingData.workspace_id,
-                user_name:    bookingData.user_name,
-                user_email:   bookingData.user_email,
                 start_time:   bookingData.start_time,
                 end_time:     bookingData.end_time,
                 total_price:  bookingData.total_price,
                 booking_type: bookingData.booking_type,
-                status:       'confirmed'
+                status:       'confirmed',
+                // Pass resources inline so the backend handles them in one transaction
+                resources: (bookingData.resources || []).map(r => ({
+                    resource_id: r.id,
+                    quantity: r.quantity || 1
+                }))
             })
         });
         const bookResult = await bookRes.json();
@@ -92,35 +96,12 @@ async function processPayment(method) {
 
         const booking = bookResult.data;
 
-        // 2. Attach resources
-        if (bookingData.resources?.length) {
-            for (const r of bookingData.resources) {
-                await fetch(`${API_URL}/bookings/${booking.id}/resources`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ resource_id: r.id, quantity: r.quantity || 1 })
-                }).catch(() => {});
-            }
-        }
-
-        // 3. Generate QR code
+        // 2. Generate QR code
         const qrRes    = await fetch(`${API_URL}/qr/generate/${booking.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         const qrResult = await qrRes.json();
 
-        // 4. Save transaction locally
-        saveTransaction({
-            id:             `TXN${Date.now()}`,
-            booking_id:     booking.id,
-            workspace_name: bookingData.workspace_name,
-            amount:         bookingData.total_price,
-            method:         method,
-            status:         'success',
-            date:           new Date().toISOString(),
-            user_name:      bookingData.user_name,
-            user_email:     bookingData.user_email
-        });
-
-        // 5. Persist confirmation data and navigate
+        // 3. Persist confirmation data and navigate (server is source of truth for user identity)
+        const currentUser = getCurrentUser();
         saveSession('confirmedBooking', {
             booking,
             qr_image: qrResult.data?.qr_image || null,
@@ -128,7 +109,7 @@ async function processPayment(method) {
             hub_name:   bookingData.hub_name,
             hub_city:   bookingData.hub_city,
             total_price: bookingData.total_price,
-            user_name:  bookingData.user_name,
+            user_name:  currentUser?.name  || bookingData.user_name,
             start_time: bookingData.start_time,
             end_time:   bookingData.end_time
         });

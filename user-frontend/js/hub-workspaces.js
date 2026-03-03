@@ -4,6 +4,7 @@ let allWorkspaces = [];
 let hubData = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     const hubId = getParam('hub_id');
     if (!hubId) { window.location.href = 'search-hubs.html'; return; }
     await loadHub(hubId);

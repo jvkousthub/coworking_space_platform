@@ -1,6 +1,7 @@
 // workspace-details.js – Detailed view of a workspace
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     const wsId  = getParam('workspace_id');
     const hubId = getParam('hub_id');
     if (!wsId) { window.location.href = 'search-hubs.html'; return; }

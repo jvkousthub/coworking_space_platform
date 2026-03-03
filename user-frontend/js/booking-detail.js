@@ -1,6 +1,7 @@
 // booking-detail.js – Individual booking details with QR
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     const id = getParam('booking_id');
     if (!id) { window.location.href = 'my-bookings.html'; return; }
     await loadBooking(id);
@@ -9,8 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadBooking(id) {
     const container = document.getElementById('content');
     try {
+        const authHeaders = getAuthHeaders();
         const [bRes, qrRes] = await Promise.allSettled([
-            fetch(`${API_URL}/bookings/${id}`),
+            fetch(`${API_URL}/bookings/${id}`, { headers: authHeaders }),
             fetch(`${API_URL}/qr/booking/${id}`)
         ]);
 

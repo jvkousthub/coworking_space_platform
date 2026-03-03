@@ -4,6 +4,7 @@ let allBookings = [];
 let activeStatus = '';
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth()) return;
     loadBookings();
 });
 
@@ -13,7 +14,10 @@ async function loadBookings() {
     const container = document.getElementById('bookings-list');
     container.innerHTML = loadingHTML('Loading bookings...');
     try {
-        const res = await fetch(`${API_URL}/bookings`);
+        const res = await fetch(`${API_URL}/bookings/my`, {
+            headers: getAuthHeaders()
+        });
+        if (res.status === 401 || res.status === 403) { logout(); return; }
         const result = await res.json();
         allBookings = result.data || [];
         applyFilters();

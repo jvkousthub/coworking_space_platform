@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+const { authenticateToken } = require('../middleware/auth');
 
 /**
  * Transaction Data Adapter
@@ -46,7 +47,43 @@ class TransactionAdapter {
   }
 }
 
-// Get all transactions (bookings with payment status)
+// Get current user's transactions (auth required)
+router.get('/my', authenticateToken, async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select(`
+        id,
+        workspace_id,
+        user_name,
+        user_email,
+        total_price,
+        status,
+        created_at,
+        start_time,
+        end_time,
+        workspaces (
+          name,
+          working_hubs (
+            name
+          )
+        )
+      `)
+      .eq('user_email', userEmail)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const transactions = (bookings || []).map(b => TransactionAdapter.fromBooking(b));
+    res.json({ success: true, data: transactions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get all transactions (admin usage – no auth)
 router.get('/', async (req, res) => {
   try {
     // Fetch bookings with related data

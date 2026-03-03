@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- Auth loading overlay -->
+    <div id="auth-loading-overlay">
+        <i class="fas fa-building auth-logo"></i>
+        <p>Verifying your session...</p>
+    </div>
+
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
@@ -20,6 +26,25 @@
                 <li><a href="search-hubs.html">Find Spaces</a></li>
                 <li><a href="my-bookings.html" class="active">My Bookings</a></li>
                 <li><a href="transactions.html">Transactions</a></li>
+                <li class="nav-user">
+                    <div class="user-menu" onclick="toggleUserMenu()">
+                        <div class="user-avatar-circle" id="user-avatar"></div>
+                        <span id="user-name"></span>
+                        <i class="fas fa-chevron-down" style="font-size:.7rem;opacity:.6;"></i>
+                    </div>
+                    <div id="user-dropdown" class="user-dropdown">
+                        <div class="user-dropdown-info">
+                            <div class="user-dropdown-avatar" id="user-dropdown-avatar"></div>
+                            <div style="overflow:hidden;">
+                                <div id="user-dropdown-name" class="user-dropdown-name"></div>
+                                <div id="user-dropdown-email" class="user-dropdown-email"></div>
+                            </div>
+                        </div>
+                        <a href="my-bookings.html"><i class="fas fa-calendar-check"></i> My Bookings</a>
+                        <a href="transactions.html"><i class="fas fa-receipt"></i> Transactions</a>
+                        <a href="#" class="logout-link" onclick="logout();return false;"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+                    </div>
+                </li>
             </ul>
         </div>
     </nav>

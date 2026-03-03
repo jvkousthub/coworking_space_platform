@@ -3,12 +3,16 @@
 let allTransactions = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth()) return;
     loadTransactions();
 });
 
 async function loadTransactions() {
     try {
-        const response = await fetch(`${API_URL}/transactions`);
+        const response = await fetch(`${API_URL}/transactions/my`, {
+            headers: getAuthHeaders()
+        });
+        if (response.status === 401 || response.status === 403) { logout(); return; }
         const result = await response.json();
         
         if (result.success) {

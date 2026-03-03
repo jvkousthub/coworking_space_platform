@@ -4,12 +4,22 @@ let currentWorkspace = null;
 let selectedResources = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     const wsId  = getParam('workspace_id');
     const hubId = getParam('hub_id');
     if (!wsId) { window.location.href = 'search-hubs.html'; return; }
 
     await loadWorkspace(wsId, hubId);
     await loadResources(wsId);
+
+    // Pre-fill user details from session (read-only)
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        const nameField  = document.getElementById('user-name');
+        const emailField = document.getElementById('user-email');
+        if (nameField)  { nameField.value = currentUser.name;   nameField.setAttribute('readonly', true); }
+        if (emailField) { emailField.value = currentUser.email; emailField.setAttribute('readonly', true); }
+    }
 
     document.getElementById('booking-form').addEventListener('submit', handleSubmit);
 
@@ -264,13 +274,15 @@ function handleSubmit(e) {
     const total   = totalEl ? parseFloat(totalEl.textContent.replace('₹', '').replace(',', '')) : 0;
 
     // Persist booking data to session storage for payment page
+    // Always use the authenticated user's identity (not manually entered values)
+    const currentUser = getCurrentUser();
     saveSession('pendingBooking', {
         workspace_id:  currentWorkspace.id,
         workspace_name: currentWorkspace.name,
         hub_name:      currentWorkspace.working_hubs?.name,
         hub_city:      currentWorkspace.working_hubs?.city,
-        user_name:     document.getElementById('user-name').value.trim(),
-        user_email:    document.getElementById('user-email').value.trim(),
+        user_name:     currentUser?.name  || document.getElementById('user-name').value.trim(),
+        user_email:    currentUser?.email || document.getElementById('user-email').value.trim(),
         start_time:    start,
         end_time:      end,
         booking_type:  document.getElementById('booking-type').value,

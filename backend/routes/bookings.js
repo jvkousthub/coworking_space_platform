@@ -2,8 +2,42 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { calculateDynamicPrice } = require('../utils/pricing');
+const { authenticateToken } = require('../middleware/auth');
 
-// Get all bookings
+// Get current user's bookings (protected)
+router.get('/my', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const userEmail = req.user.email;
+
+    let query = supabase
+      .from('bookings')
+      .select(`
+        *,
+        workspaces (
+          id,
+          name,
+          type,
+          working_hubs (
+            name,
+            city
+          )
+        )
+      `)
+      .eq('user_email', userEmail)
+      .order('created_at', { ascending: false });
+
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get all bookings (admin usage)
 router.get('/', async (req, res) => {
   try {
     const { status, workspace_id } = req.query;
@@ -36,8 +70,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get booking by ID
-router.get('/:id', async (req, res) => {
+// Get booking by ID (auth required)
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('bookings')
@@ -79,13 +113,13 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create booking
-router.post('/', async (req, res) => {
+// Create booking (auth required)
+router.post('/', authenticateToken, async (req, res) => {
   try {
+    // Pull user identity from JWT token (trust token, not body)
+    const tokenUser = req.user;
     const {
       workspace_id,
-      user_name,
-      user_email,
       start_time,
       end_time,
       total_price,
@@ -93,6 +127,10 @@ router.post('/', async (req, res) => {
       status,
       resources // Array of { resource_id, quantity }
     } = req.body;
+
+    // Override user data with token data for security
+    const user_name  = tokenUser.name;
+    const user_email = tokenUser.email;
 
     // Validate required fields
     if (!workspace_id || !user_name || !start_time || !end_time) {
@@ -179,6 +217,7 @@ router.post('/', async (req, res) => {
       .insert([{
         workspace_id,
         user_name,
+        user_email,
         start_time,
         end_time,
         total_price: finalPrice,

@@ -3,6 +3,7 @@
 let allHubs = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
     await loadCities();
     await loadHubs();
 

@@ -325,6 +325,7 @@ body, p, li, input, button, select, textarea {
 .hero p {
     font-size: 1.15rem;
     margin-bottom: 2.25rem;
+    color: rgba(255, 255, 255, 0.94);
     opacity: 0.84;
 }
 
@@ -2193,132 +2194,160 @@ body, p, li, input, button, select, textarea {
 
 .nav-brand img.site-logo { border-radius: 6px; }
 
-/* ── Premium Polish Pass ───────────────────────────── */
+/* ── Production UI Upgrade ───────────────────────── */
 :root {
-    --radius-sm: 10px;
-    --radius-md: 14px;
-    --radius-lg: 18px;
-    --ring: 0 0 0 3px rgba(198, 169, 105, 0.22);
+    --surface-tint: #f8f4ec;
+    --ink: #17232d;
+    --ink-soft: #4f5f6a;
+    --card-shadow: 0 14px 34px rgba(12, 20, 28, 0.1);
+    --card-shadow-hover: 0 20px 44px rgba(12, 20, 28, 0.14);
 }
 
 body {
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-}
-
-.container {
-    max-width: 1320px;
-    padding-inline: 32px;
-}
-
-.navbar {
-    border-bottom-width: 1px;
-}
-
-.nav-menu a {
-    font-weight: 600;
-    letter-spacing: -0.1px;
+    background:
+        radial-gradient(circle at 8% 0%, rgba(198, 169, 105, 0.14), transparent 34%),
+        radial-gradient(circle at 88% 4%, rgba(107, 125, 92, 0.14), transparent 30%),
+        linear-gradient(180deg, var(--surface) 0%, var(--surface-tint) 100%);
+    color: var(--ink);
 }
 
 .hero {
-    padding-top: 6.5rem;
-    padding-bottom: 6.25rem;
+    background:
+        radial-gradient(circle at 10% 18%, rgba(198, 169, 105, 0.24), transparent 36%),
+        radial-gradient(circle at 84% 9%, rgba(107, 125, 92, 0.18), transparent 32%),
+        linear-gradient(138deg, #11161d 0%, #1a242f 54%, #0f151c 100%);
+    position: relative;
+    overflow: hidden;
 }
 
-.hero p,
-.section-head p {
-    font-size: 1.04rem;
+.hero::after {
+    content: '';
+    position: absolute;
+    width: min(48vw, 540px);
+    height: min(48vw, 540px);
+    bottom: -180px;
+    right: -130px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(198, 169, 105, 0.25), rgba(198, 169, 105, 0));
+    pointer-events: none;
 }
 
-.hero-search,
-.search-filters,
-.hub-header,
-.search-box,
-.modal-content,
-.feature-card,
-.hub-card,
-.workspace-card,
-.pricing-card,
-.space-card,
-.transaction-card,
-.stat-card,
-.booking-card {
-    border-radius: var(--radius-md);
+.hero-content {
+    position: relative;
+    z-index: 1;
 }
 
-.feature-card,
-.hub-card,
-.workspace-card,
-.pricing-card,
-.space-card,
-.transaction-card,
-.stat-card,
-.booking-card {
-    box-shadow: 0 10px 24px rgba(11, 11, 12, 0.07);
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 1rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.96);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
 }
 
-.feature-card:hover,
-.hub-card:hover,
-.workspace-card:hover,
-.space-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 28px rgba(11, 11, 12, 0.1);
+.hero-search {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 16px 42px rgba(7, 11, 16, 0.3);
 }
 
-.btn-primary,
-.btn-secondary {
-    min-height: 44px;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    letter-spacing: -0.1px;
-}
-
-.btn-primary:focus-visible,
-.btn-secondary:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-a:focus-visible {
-    outline: none;
-    box-shadow: var(--ring);
-}
-
-.pricing-card.featured {
-    border-width: 1px;
-    transform: translateY(-2px);
-}
-
-.site-footer {
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.8rem;
     margin-top: 1rem;
 }
 
-@media (max-width: 1024px) {
-    .container {
-        padding-inline: 24px;
-    }
+.btn-secondary.ghost {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    color: #fff;
+}
 
-    .hero h1 {
-        max-width: 12ch;
-        margin-inline: auto;
-    }
+.btn-secondary.ghost:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-metrics {
+    margin-top: 1.35rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.metric-pill {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.95);
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.feature-card,
+.space-card,
+.pricing-card,
+.hub-card,
+.workspace-card {
+    box-shadow: var(--card-shadow);
+    border-color: #e8e0d2;
+}
+
+.feature-card:hover,
+.space-card:hover,
+.hub-card:hover,
+.workspace-card:hover,
+.pricing-card:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: #d7c6a6;
+}
+
+.feature-card i {
+    background: linear-gradient(135deg, rgba(198, 169, 105, 0.2), rgba(107, 125, 92, 0.16));
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.section-kicker {
+    color: #5f6f58;
+    letter-spacing: 0.14em;
+}
+
+.pricing-card.featured {
+    border: 1px solid #ccb484;
+    background: linear-gradient(170deg, #fcfaf4, #f7f0e0);
+}
+
+.site-footer {
+    background:
+        linear-gradient(180deg, rgba(248, 247, 243, 0.9), rgba(242, 236, 224, 0.95));
 }
 
 @media (max-width: 768px) {
-    .container {
-        padding-inline: 18px;
+    .hero-actions {
+        flex-direction: column;
     }
 
-    .hero {
-        padding-top: 4.6rem;
-        padding-bottom: 4.2rem;
+    .hero-metrics {
+        justify-content: stretch;
     }
-}
 
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+    .metric-pill {
+        text-align: center;
+        width: 100%;
     }
 }

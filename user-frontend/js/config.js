@@ -249,7 +249,14 @@ function checkValidationRule(rule, param, field) {
     if (rule === 'max' && val && Number(val) > Number(param)) return `Maximum value is ${param}.`;
     if (rule === 'minlen' && val && val.length < Number(param)) return `Minimum ${param} characters required.`;
     if (rule === 'maxlen' && val && val.length > Number(param)) return `${label} must not exceed ${param} characters.`;
-    if (rule === 'future' && val && new Date(val) <= new Date()) return `${label} must be a future date/time.`;
+    if (rule === 'future' && val) {
+        // datetime-local input is minute-precision, so compare at minute granularity
+        // to avoid false negatives when user picks the current minute.
+        const selected = new Date(val);
+        const now = new Date();
+        now.setSeconds(0, 0);
+        if (selected < now) return `${label} must be a future date/time.`;
+    }
     if (rule === 'afterField') {
         const other = document.getElementById(param);
         if (other && val && other.value && new Date(val) <= new Date(other.value))

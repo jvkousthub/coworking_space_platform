@@ -528,7 +528,8 @@ async function handleSubmit(e) {
 
     // Run validation
     if (!validateForm(e.target)) {
-        showToast('Please fix the errors before proceeding.', 'error');
+        const firstError = e.target.querySelector('.field-error');
+        showToast(firstError?.textContent || 'Please fix the errors before proceeding.', 'error');
         return;
     }
 
